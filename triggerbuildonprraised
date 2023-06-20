@@ -1,0 +1,31 @@
+stage('Testing') {
+          
+      steps {
+          
+          script {
+ // Make an HTTP request to the GitHub API to get the changed files test
+              def response = httpRequest(
+                  url: "https://api.github.com/repos/pbansal123/cdh/pulls/96/files",
+                  authentication: 'github',
+                  httpMode: 'GET',
+                  contentType: 'APPLICATION_JSON'
+              )
+                def changedModules = []
+                def files = readJSON(text: response.content)
+              
+           files.each { file ->
+                        def filePath = file.filename
+                        if (filePath.startsWith('pda-sys-admin/')) {
+                            def module = filePath.split('/')[1]
+                            if (!changedModules.contains(module)) {
+                                changedModules.add(module)
+                                build wait: true, job: 'sch23r2/sys_pda_build', parameters: [ 
+                                                    string(name: 'tagname', value: "${env.BUILD_NUMBER}")
+                                                    ]
+                            }
+                        }
+                    }
+                    echo "Build triggered for modules: ${changedModules}"            
+              }
+          }
+      }
