@@ -1,0 +1,45 @@
+
+
+pipeline {
+  agent {
+    kubernetes {
+      yamlFile 'build/AgentPod.yaml'
+    }
+  }
+   stages {
+  stage('Testing') {
+          
+      steps {
+          
+          script {
+ // Make an HTTP request to the GitHub API to get the changed files test
+             
+              def fnames = sh  script:  'git diff --name-only $GIT_PREVIOUS_COMMIT $GIT_COMMIT', returnStdout: true
+              def changedModules = []
+
+          
+              def files = fnames.split('\\s+')
+           files.each { file ->
+                           echo "file :  ${file}"     
+                        if (file.startsWith('pda-sys-admin/')) {
+                           echo "starts with pda-sys-admin"     
+                            def module = file.split('/')[1]
+                              echo "module:  ${module}"     
+                            if (!changedModules.contains(module)) {
+                                changedModules.add(module)
+                                build wait: true, job: 'sch23r2/sys_pda_build', parameters: [ 
+                                                    string(name: 'tagname', value: "${env.BUILD_NUMBER}")
+                                                    ]
+                            }
+                        }
+                    }
+
+                    echo "Build triggered for modules: ${changedModules}"            
+              }
+          }
+      }
+    
+
+   
+   }
+}
